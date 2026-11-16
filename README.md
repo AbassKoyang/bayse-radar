@@ -7,29 +7,6 @@ The default event is the 2027 Nigerian presidential election
 (`c03ea595-a209-4fe9-a0e1-bd77f3154927`), but any number of event UUIDs can be
 watched.
 
-## What was broken
-
-The old code had two separate problems:
-
-1. `MARKET_ID` did not exist, so every connection crashed with `NameError`.
-2. Even after that was fixed, the connection was reset every 20 seconds:
-
-   ```
-   ConnectionClosedError: no close frame received or sent
-   OSError: [WinError 64] The specified network name is no longer available
-   ```
-
-   The cause is the WebSocket keepalive. `websockets.connect(ping_interval=20)`
-   makes the client send a **client-originated ping frame** at 20 seconds, and
-   Bayse immediately resets the socket. Sending the documented application-level
-   `{"type": "ping"}` has the same effect on the live server. A live probe
-   confirmed that an idle connection with no client pings stays open fine.
-
-This rewrite sets `ping_interval=None`, never sends `{"type": "ping"}`, and lets
-the server's own ping frames be answered automatically by the `websockets`
-library. It also handles `SIGINT`/`SIGTERM` so Ctrl+C closes the socket cleanly
-instead of entering the reconnect loop.
-
 ## How it works
 
 ```
@@ -133,24 +110,24 @@ https://www.bayse.markets/market/who-will-win-the-2027-presidential-election
 
 ## Configuration
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `BAYSE_EVENT_IDS` | the 2027 election event | Comma-separated event UUIDs |
-| `BAYSE_ALL_MARKETS` | `false` | `false`: only the event IDs above; `true`: every Bayse market |
-| `MIN_ORDER_NGN` | `100000` | Alert when NGN value is **strictly above** this |
-| `USD_NGN_FALLBACK` | `1500` | Rate used if the live FX lookup fails |
-| `FX_REFRESH_SECONDS` | `21600` | USD/NGN refresh interval (6 hours) |
-| `TWITTER_API_KEY` | — | X API key |
-| `TWITTER_API_SECRET` | — | X API secret |
-| `TWITTER_ACCESS_TOKEN` | — | X user access token |
-| `TWITTER_ACCESS_TOKEN_SECRET` | — | X user access secret |
-| `TWITTER_DRY_RUN` | auto | Force dry-run on/off |
-| `STATE_DB` | `data/whale_radar.sqlite3` | Idempotency store |
-| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `RECONNECT_BASE_SECONDS` | `5` | Initial reconnect delay |
-| `RECONNECT_MAX_SECONDS` | `60` | Maximum backoff delay |
-| `RECONNECT_MAX_ATTEMPTS` | `0` | `0` retries forever |
-| `QUEUE_SIZE` | `1000` | Buffered activity messages |
+| Variable                      | Default                    | Purpose                                                       |
+| ----------------------------- | -------------------------- | ------------------------------------------------------------- |
+| `BAYSE_EVENT_IDS`             | the 2027 election event    | Comma-separated event UUIDs                                   |
+| `BAYSE_ALL_MARKETS`           | `false`                    | `false`: only the event IDs above; `true`: every Bayse market |
+| `MIN_ORDER_NGN`               | `100000`                   | Alert when NGN value is **strictly above** this               |
+| `USD_NGN_FALLBACK`            | `1500`                     | Rate used if the live FX lookup fails                         |
+| `FX_REFRESH_SECONDS`          | `21600`                    | USD/NGN refresh interval (6 hours)                            |
+| `TWITTER_API_KEY`             | —                          | X API key                                                     |
+| `TWITTER_API_SECRET`          | —                          | X API secret                                                  |
+| `TWITTER_ACCESS_TOKEN`        | —                          | X user access token                                           |
+| `TWITTER_ACCESS_TOKEN_SECRET` | —                          | X user access secret                                          |
+| `TWITTER_DRY_RUN`             | auto                       | Force dry-run on/off                                          |
+| `STATE_DB`                    | `data/whale_radar.sqlite3` | Idempotency store                                             |
+| `LOG_LEVEL`                   | `INFO`                     | `DEBUG`, `INFO`, `WARNING`, `ERROR`                           |
+| `RECONNECT_BASE_SECONDS`      | `5`                        | Initial reconnect delay                                       |
+| `RECONNECT_MAX_SECONDS`       | `60`                       | Maximum backoff delay                                         |
+| `RECONNECT_MAX_ATTEMPTS`      | `0`                        | `0` retries forever                                           |
+| `QUEUE_SIZE`                  | `1000`                     | Buffered activity messages                                    |
 
 ### Currency handling
 
